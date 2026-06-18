@@ -1,0 +1,21 @@
+{
+  "short_name": "SmartersClone",
+  "name": "IPTV Smarters Clone App",
+  "icons": [
+    {
+      "src": "https://placeholder.com",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://placeholder.com",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./player.html",
+  "background_color": "#161623",
+  "theme_color": "#00b4d8",
+  "display": "standalone",
+  "orientation": "portrait"
+}

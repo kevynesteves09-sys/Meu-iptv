@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+<link rel="manifest" href="manifest.json">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Estilo Smarters</title>
+    <!-- Biblioteca de Vídeo -->
+    <link href="https://zencdn.net" rel="stylesheet" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a2e; color: #fff; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Tela de Login */
+        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #161623; display: flex; justify-content: center; align-items: center; z-index: 10; }
+        .login-box { background: #0f0f1a; padding: 40px; border-radius: 10px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 15px 25px rgba(0,0,0,0.5); }
+        .login-box h2 { margin-bottom: 20px; color: #00b4d8; }
+        .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: none; background: #1a1a2e; color: #fff; border-radius: 5px; }
+        .login-box button { width: 100%; padding: 12px; margin-top: 10px; border: none; background: #00b4d8; color: #fff; font-weight: bold; border-radius: 5px; cursor: pointer; }
+        
+        /* Painel Principal */
+        #main-app { display: none; width: 100%; height: 100%; flex-direction: row; }
+        .sidebar { width: 300px; background: #0f0f1a; display: flex; flex-direction: column; border-right: 2px solid #1a1a2e; }
+        .sidebar h3 { padding: 20px; text-align: center; color: #00b4d8; border-bottom: 1px solid #1a1a2e; }
+        .channel-list { flex: 1; overflow-y: auto; list-style: none; }
+        .channel-item { padding: 15px 20px; border-bottom: 1px solid #1a1a2e; cursor: pointer; transition: 0.2s; display: flex; align-items: center; }
+        .channel-item:hover { background: #00b4d8; color: #fff; }
+        .channel-item img { width: 40px; height: 40px; object-fit: contain; margin-right: 15px; border-radius: 5px; background: #fff; }
+        
+        /* Área do Vídeo */
+        .video-container { flex: 1; display: flex; flex-direction: column; background: #000; justify-content: center; align-items: center; position: relative; }
+        .video-js { width: 100% !important; height: 100% !important; }
+        .logout-btn { position: absolute; top: 20px; right: 20px; padding: 10px 15px; background: #e63946; color: white; border: none; border-radius: 5px; cursor: pointer; z-index: 5; }
+    </style>
+</head>
+<body>
+
+    <!-- TELA DE LOGIN (LOGIN DA API XTREAM) -->
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>IPTV Smarters Clone</h2>
+            <input type="text" id="dns" placeholder="http://exemplo.com:8080">
+            <input type="text" id="username" placeholder="Usuário">
+            <input type="password" id="password" placeholder="Senha">
+            <button onclick="connectXtream()">Entrar</button>
+        </div>
+    </div>
+
+    <!-- APP PRINCIPAL -->
+    <div id="main-app">
+        <!-- Lista Lateral de Canais -->
+        <div class="sidebar">
+            <h3>Canais Ao Vivo</h3>
+            <ul id="channels" class="channel-list">
+                <!-- Canais injetados via JavaScript -->
+            </ul>
+        </div>
+
+        <!-- Área de Reprodução -->
+        <div class="video-container">
+            <button class="logout-btn" onclick="logout()">Sair</button>
+            <video id="iptv-player" class="video-js vjs-default-skin vjs-big-play-centered" controls preload="auto">
+                <p class="vjs-no-js">Ative o JavaScript para rodar o player.</p>
+            </video>
+        </div>
+    </div>
+
+    <!-- Scripts do Player -->
+    <script src="https://zencdn.net"></script>
+    <script>
+        let player = videojs('iptv-player');
+        let currentDns = "";
+        let currentUser = "";
+        let currentPass = "";
+
+        async function connectXtream() {
+            const dns = document.getElementById('dns').value.trim();
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value.trim();
+
+            if (!dns || !user || !pass) {
+                alert("Preencha todos os campos!");
+                return;
+            }
+
+            currentDns = dns;
+            currentUser = user;
+            currentPass = pass;
+
+            // URL da API Xtream Codes para puxar a lista de canais ao vivo
+            const apiUrl = `${dns}/player_api.php?username=${user}&password=${pass}&action=get_live_streams`;
+
+            try {
+                // Nota: Devido a restrições de CORS de alguns servidores, pode ser necessário um proxy ou rodar localmente.
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data && data.length > 0) {
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('main-app').style.display = 'flex';
+                    renderChannels(data);
+                } else {
+                    alert("Nenhum canal encontrado ou dados incorretos.");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Erro ao conectar ao servidor. Verifique o link e sua conexão (CORS).");
+            }
+        }
+
+        function renderChannels(channels) {
+            const container = document.getElementById('channels');
+            container.innerHTML = "";
+
+            // Mostra os primeiros 50 canais como exemplo
+            channels.slice(0, 50).forEach(channel => {
+                const li = document.createElement('li');
+                li.className = 'channel-item';
+                
+                // Monta o link do stream baseado no padrão do Xtream Codes
+                const streamUrl = `${currentDns}/live/${currentUser}/${currentPass}/${channel.stream_id}.m3u8`;
+                const logo = channel.stream_icon ? channel.stream_icon : 'https://placeholder.com';
+
+                li.innerHTML = `<img src="${logo}" onerror="this.src='https://placeholder.com'"> <span>${channel.name}</span>`;
+                li.onclick = () => playStream(streamUrl);
+                
+                container.appendChild(li);
+            });
+        }
+
+        function playStream(url) {
+            player.src({
+                src: url,
+                type: 'application/x-mpegURL'
+            });
+            player.play();
+        }
+
+        function logout() {
+            player.pause();
+            document.getElementById('main-app').style.display = 'none';
+            document.getElementById('login-screen').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
